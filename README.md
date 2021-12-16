@@ -4,15 +4,15 @@ Bayesian approach introduced in [1] to infer the fetal fraction, the fetal genot
 
 ## Authors
 
-- Ghislain DURIF$^{1}$
-- Cathy LIAUTARD HAAG$^{2}$
-- Marie-Claire VINCENT$^{2,3}$
+- Ghislain DURIF [2]
+- Cathy LIAUTARD HAAG [3]
+- Marie-Claire VINCENT [3,4]
 
-$^{1}$ IMAG, Université de Montpellier, CNRS, Montpellier, France;
+[2] IMAG, Université de Montpellier, CNRS, Montpellier, France;
 
-$^{2}$ Laboratoire de Génétique Moléculaire, Institut Universitaire de Recherche Clinique, Université de Montpellier, CHU Montpellier, Montpellier, France;
+[3] Laboratoire de Génétique Moléculaire, Institut Universitaire de Recherche Clinique, Université de Montpellier, CHU Montpellier, Montpellier, France;
 
-$^{3}$ PhyMedExp Univ. Montpellier, CNRS, INSERM, Montpellier, France;
+[4] PhyMedExp Univ. Montpellier, CNRS, INSERM, Montpellier, France;
 
 ## Availability
 
