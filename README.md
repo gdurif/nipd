@@ -2,6 +2,10 @@
 
 Bayesian approach introduced in [1] to infer the fetal fraction, the fetal genotype and the fetal allele origin using sequencing data from the mother, the father and cfDNA in the maternal plasma.
 
+## Reference
+
+[1] C. Liautard-Haag, G. Durif, C. Van Goethem, D. Baux, A. Louis, L. Cayrefourcq, M Lamairia, M. Willems, C. Zordan, V. Dorian, C. Rooryck-Thambo, C. Goizet, A. Chaussenot, L Monteil, P. Calvas, C. Miry, R. Favre, E. Le Boette, M. Fradin, AF Roux, M. Cossee, M Koenig, C. Panabière, C. Guissart, M. C. Vincent. "Non-invasive prenatal diagnosis of triplet repeat expansion disorders by linked-read haplotyping and Bayesian modeling". 2021. Submitted to a peer-reviewed journal.
+
 ## Authors
 
 - Ghislain DURIF [2]
@@ -186,9 +190,3 @@ You can find Python script examples to use the `prediag` Python package in a ded
 - correct cfDNA genotype by checking that allelic depth is higher than an absolute threshold, and higher than a percentage of the coverage
 - window-based estimation of fetal fraction with a weighted average of locus-based fetal fraction estimation with weights proportional to coverage
 - account for chromosome break in fetal allele origin inference
-
----
-
-## Reference
-
-[1] C. Liautard-Haag, G. Durif, C. Van Goethem, D. Baux, A. Louis, L. Cayrefourcq, M Lamairia, M. Willems, C. Zordan, V. Dorian, C. Rooryck-Thambo, C. Goizet, A. Chaussenot, L Monteil, P. Calvas, C. Miry, R. Favre, E. Le Boette, M. Fradin, AF Roux, M. Cossee, M Koenig, C. Panabière, C. Guissart, M. C. Vincent. "Non-invasive prenatal diagnosis of triplet repeat expansion disorders by linked-read haplotyping and Bayesian modeling". 2021. Submitted to a peer-reviewed journal.
