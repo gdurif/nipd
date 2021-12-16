@@ -14,7 +14,7 @@ The pipeline is available as a Python package called `prediag` (see the [`src`](
 
 ## Licensing
 
-The `prediag` package is released under the GPL-v3 license. See the attached files [`LICENSE.txt`](./src/LICENSE.txt) and [`COPYING.txt`](./src/COPYING.txt) for full license details.
+The `prediag` package is released under the GPL-v3 license. See the attached files [`LICENSE.txt`](./LICENSE.txt) and [`COPYING.txt`](./COPYING.txt) for full license details.
 
 ## Installation
 
