@@ -11,7 +11,7 @@ setup(
     description='Noninvasive Prenatal Diagnosis',
     author='Ghislain Durif',
     author_email='gd.dev@libertymail.net',
-    url=None,
+    url='https://github.com/gdurif/nipd',
     license='GPL3',
     license_files = ('LICENSE.txt', 'COPYING.txt'),
     packages=find_packages(),
