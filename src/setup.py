@@ -20,7 +20,7 @@ setup(
         "numpy",
         "pandas",
         "psutil",
-        "pyvcf",
+        "pyvcf3",
         "scipy",
         "tqdm"
     ],
