@@ -97,6 +97,9 @@ def sampler(loci_tab, recombination_rate = 1.2e-8, verbose = False):
 
     Output: updated `loci_tab` table.
     """
+    # RNG
+    rng = np.random.default_rng()
+    # init setup
     possible_allele_origin = ['0-0', '0-1', '1-0', '1-1']
     previous_allele_origin = None
     previous_pos = 0
@@ -132,8 +135,8 @@ def sampler(loci_tab, recombination_rate = 1.2e-8, verbose = False):
         )
 
         # sample from conditional posterior
-        current_allele_origin = np.random.choice(
-            possible_allele_origin, size=None, p=cond_posteriors
+        current_allele_origin = rng.choice(
+            possible_allele_origin, p=cond_posteriors
         )
         # next locus
         previous_pos = current_pos
