@@ -24,11 +24,14 @@ def ar_signal(n_samples, corr=0.9, mu=0, sigma=0.5):
     # under section "Example: An AR(1) process".
     c = mu * (1 - corr)
     sigma_e = np.sqrt((sigma ** 2) * (1 - corr ** 2))
+    
+    # RNG
+    rng = np.random.default_rng()
 
     # Sample the auto-regressive process.
-    signal = [c + np.random.normal(0, sigma_e)]
+    signal = [c + rng.normal(0, sigma_e)]
     for _ in range(1, n_samples):
-        signal.append(c + corr * signal[-1] + np.random.normal(0, sigma_e))
+        signal.append(c + corr * signal[-1] + rng.normal(0, sigma_e))
 
     return np.array(signal)
 
@@ -65,8 +68,8 @@ def single_snp_data(mother_gt, father_gt, allele_origin, ff = 0.2,
         ff (float): fetal fraction, between 0 and 1, default value is 20% (0.2).
         coverage (int): sequencing coverage (i.e. average number single read
             copies). Default value is 100.
-        add_noise (bool): add noise when partitioning '0' and '1' reads.
-            Default value is True.
+        add_noise (bool): add noise into allelic depth (of average level 1/20 
+            of the coverage). Default value is True.
         verbose (bool): verbosity. Default is False.
 
     Output:
@@ -77,20 +80,25 @@ def single_snp_data(mother_gt, father_gt, allele_origin, ff = 0.2,
 
     mat_gt = parse_gt(mother_gt)
     pat_gt = parse_gt(father_gt)
+    
+    # RNG
+    rng = np.random.default_rng()
 
     ## allele_origin
     if allele_origin is not None:
         allele_origin = parse_allele_origin(allele_origin)
 
     ## parental allele
-    mat_allele = allele_origin[0] if is_phased(mother_gt) and \
-                                     allele_origin is not None and \
-                                     allele_origin[0] is not None \
-                        else np.random.choice([0, 1])
-    pat_allele = allele_origin[1] if is_phased(father_gt) and \
-                                     allele_origin is not None and \
-                                     allele_origin[1] is not None \
-                        else np.random.choice([0, 1])
+    mat_allele = allele_origin[0] \
+        if is_phased(mother_gt) and \
+            allele_origin is not None and \
+            allele_origin[0] is not None \
+        else rng.choice([0, 1])
+    pat_allele = allele_origin[1] \
+        if is_phased(father_gt) and \
+            allele_origin is not None and \
+            allele_origin[1] is not None \
+        else rng.choice([0, 1])
 
     ## fetal genotype
     fetal_gt = np.array([mat_gt[mat_allele], pat_gt[pat_allele]])
@@ -102,7 +110,7 @@ def single_snp_data(mother_gt, father_gt, allele_origin, ff = 0.2,
         cfdna_gt = np.repeat(cfdna_gt[0], 2)
 
     ## read count
-    n_read = int(np.random.poisson(coverage))
+    n_read = int(rng.poisson(coverage))
 
     ## reads from mother and child
     n_mat_read = int(np.round((1-ff) * n_read))
@@ -113,8 +121,7 @@ def single_snp_data(mother_gt, father_gt, allele_origin, ff = 0.2,
     n_mat_read1 = n_mat_read - n_mat_read0
     # small noise if heterozygous
     if is_het(mat_gt) and add_noise:
-        noise = int(np.random.choice([-1,1])
-                    * np.random.randint(np.round(coverage/20), size=1))
+        noise = int(rng.normal(0, np.round(coverage/20)))
         n_mat_read0 += noise
         n_mat_read1 -= noise
 
@@ -123,8 +130,7 @@ def single_snp_data(mother_gt, father_gt, allele_origin, ff = 0.2,
     n_fetal_read1 = n_fetal_read - n_fetal_read0
     # small noise if heterozygous
     if is_het(fetal_gt) and add_noise:
-        noise = int(np.random.choice([-1,1])
-                    * np.random.randint(np.round(coverage/20), size=1))
+        noise = int(rng.normal(0, np.round(coverage/20)))
         n_fetal_read0 += noise
         n_fetal_read1 -= noise
 
@@ -148,8 +154,51 @@ def single_snp_data(mother_gt, father_gt, allele_origin, ff = 0.2,
     return unparse_gt(fetal_gt, sort_out = False), unparse_gt(cfdna_gt), cfdna_ad
 
 
-def multi_snp_data(seq_length = 150, snp_dist=10e-3, phased = False,
-                   ff = 0.2, ff_constant = True, recombination_rate = 1.2e-8,
+def simulate_allele_origin(seq_length, recombination_rate, snp_pos):
+    """Simulate fetal allele origin for a given parent
+    
+    Convention: 0 = haplotype 1 and 1 = haplotype 2
+
+    Input:
+        seq_length (float): length of simulated sequence (in Mbp).
+        recombination_rate (float): recombination rate in cM/Mbp 
+            Default value 1.2. If None, no recombination is simulated.
+        snp_pos (array of float): arrays of SNP positions (in Mbp).
+
+    Output: {0,1} valued vector of allele origin of length corresponging to
+        `snp_pos` length.
+    """
+    
+    # RNG
+    rng = np.random.default_rng()
+    
+    # allele origin for the first locus
+    first_allele_origin = rng.choice([0, 1])
+    
+    # vector of allele origin (without recombination)
+    allele_origin = np.repeat(first_allele_origin, len(snp_pos))
+    
+    ## generate recombination event if any
+    recomb_event = rng.binomial(
+        n = 1, p = min(seq_length * recombination_rate * 0.01, 1)
+    )
+    # in case of a recombination event ?
+    if recomb_event:
+        # recombination position
+        recomb_pos = rng.uniform(snp_pos.min(), snp_pos.max())
+        
+        # vector of allele origin (with recombination)
+        allele_origin = np.concatenate([
+            np.repeat(first_allele_origin, np.sum(snp_pos <= recomb_pos)),
+            np.repeat(1 - first_allele_origin, np.sum(snp_pos > recomb_pos))
+        ])
+    
+    # output
+    return allele_origin
+    
+
+def multi_snp_data(seq_length = 150, snp_dist=2e-3, phased = False,
+                   ff = 0.2, ff_constant = True, recombination_rate = 1.2,
                    coverage = 100, coverage_constant = True,
                    add_noise = True, verbose = False):
     """Simulate SNP sequencing data at chromosome scale
@@ -164,10 +213,21 @@ def multi_snp_data(seq_length = 150, snp_dist=10e-3, phased = False,
         - '0/0', '0/1', '1/0', '1/1' (lexicographic order)
         - with following convention: 'A/B' where A = maternal allele and
         B = paternal allele
+    
+    Fetal allele origin in parental haplotypes:
+        - '0-0', '0-1', '1-0', '1-1'
+        - with following convention: 'A-B' where A = maternal haplotype origin,
+        and B = paternal haplotype origin, 0 = "haplotype 1" 
+        and 1 = "haplotype 2", i.e. if parental haplotype = 'x|y', 
+        then 0 corresponds to allele x, and 1 to allele y.
+    
+    Between-SNP distances are simulated through an exponential distribution of 
+    parameter `1/snp_dist`.
 
     Input:
         seq_length (float): length of simulated sequence (in Mbp).
-        snp_dist (float): average inter-SNP distance (in Mbp).
+        snp_dist (float): average inter-SNP distance (in Mbp). Default is 
+            `0.002 Mb`, i.e. `2 kb`.
         phased (bool): generate parental phased haplotype (if True) or
             unphased genotype (if False). Default value is False.
         ff (float): fetal fraction. If list, variable
@@ -175,15 +235,15 @@ def multi_snp_data(seq_length = 150, snp_dist=10e-3, phased = False,
         ff_constant (bool): should the fetal fraction be constant. If False,
             fetal fraction is generated with an auto-regressive signal of
             overage ff. Default is True.
-        recombination_rate (float): recombination rate per bp (between 0 and 1).
-            Default value 1.2e-8.
+        recombination_rate (float): recombination rate in cM/Mbp 
+            Default value 1.2. If None, no recombination is simulated.
         coverage (int): sequencing coverage (i.e. average number of
             single read copies). If list, variable coverage.
         coverage_constant (bool): should the coverage be constant. If False,
             coverage is generated with an auto-regressive signal of
             overage ff. Default is True.
-        add_noise (bool): add noise when partitioning '0' and '1' reads.
-            Default value is True.
+        add_noise (bool): add noise into allelic depth (of average level 1/20 
+            of the coverage). Default value is True.
         verbose (bool): verbosity. Default is False.
 
     Output: Pandas.DataFrame with for each SNP
@@ -195,16 +255,18 @@ def multi_snp_data(seq_length = 150, snp_dist=10e-3, phased = False,
             or paternal genotype 'x/y' if haplotype not available.
         * mother_pq (float): mother phasing quality probability, "probability
             that alleles are phased incorrectly in a heterozygous call"
-            (10x-genomics doc).
+            (c.f. 10x-genomics doc). 0 by default (no phasing error).
         * mother_jq (float): mother junction quality probability, "probability
             that there is a large-scale phasing switch error occuring between
             this variant and the following variant" (10x-genomics doc).
+            0 by default (no phasing error).
         * father_pq (float): father phasing quality probability, "probability
             that alleles are phased incorrectly in a heterozygous call"
-            (10x-genomics doc).
+            (10x-genomics doc). 0 by default (no phasing error).
         * father_jq (float): father junction quality probability, "probability
             that there is a large-scale phasing switch error occuring between
             this variant and the following variant" (10x-genomics doc).
+            0 by default (no phasing error).
         * true_ff (float): fetal fraction.
         * coverage (int): theoretical coverage (i.e. average read counts).
         * fetal_gt (string): fetal genotype 'x/y' with x, y in {0, 1}.
@@ -215,11 +277,19 @@ def multi_snp_data(seq_length = 150, snp_dist=10e-3, phased = False,
             'a-b' with a, b in {0, 1}. Only relevant if parental phased
             halotypes are provided.
     """
+    
+    # RNG
+    rng = np.random.default_rng()
 
     ## generate SNP position
-    n_snp = int(seq_length / snp_dist)
-    uniform_pos = np.random.uniform(size=int(n_snp))
-    snp_pos = np.sort(np.round(uniform_pos * seq_length * 1e6).astype(int))
+    snp_dist_vec = rng.exponential(
+        scale = snp_dist, 
+        size = 5*int(seq_length / snp_dist)
+    )
+    
+    snp_pos = np.cumsum(snp_dist_vec)
+    snp_pos = snp_pos[snp_pos <= seq_length]
+    n_snp = len(snp_pos)
 
     ## fetal fraction
     ff_values = None
@@ -235,55 +305,57 @@ def multi_snp_data(seq_length = 150, snp_dist=10e-3, phased = False,
         coverage_values = np.repeat(coverage, n_snp)
     else:
         tmp = ar_signal(n_snp, corr=0.9, mu=0, sigma=0.5)
-        coverage_values = np.round(coverage
-                + 0.8 * coverage * tmp/np.max(np.abs(tmp))).astype(int)
+        coverage_values = np.round(
+            coverage + 0.8 * coverage * tmp / np.max(np.abs(tmp))
+        ).astype(int)
 
     ## possible alleles
     possible_alleles = ['0', '1']
 
-    ## phasing error probability is low
+    ## phasing error probability is low (not used at the moment)
     mother_phasing_error_proba = 1e-10
     father_phasing_error_proba = 1e-10
 
     ## possible allele origin
     possible_allele_origin = ['0-0', '0-1', '1-0', '1-1']
+    
+    ## simulate allele origins along the region for both parents
+    # (with potential recombination event)
+    mother_allele_origin = simulate_allele_origin(
+        seq_length, recombination_rate, snp_pos
+    )
+    father_allele_origin = simulate_allele_origin(
+        seq_length, recombination_rate, snp_pos
+    )
 
     ## SNP generation
     out = []
-    previous_pos = 0
-    previous_allele_origin = None
-    for i, (pos, ff, cov) in enumerate(zip(snp_pos, ff_values, coverage_values)):
+    for i, (pos, ff, cov, mat_ori, pat_ori) in \
+        enumerate(zip(
+            snp_pos, ff_values, coverage_values, 
+            mother_allele_origin, father_allele_origin
+        )):
         ## moter genotype
-        mother_gt = unparse_gt(np.random.choice(possible_alleles, size=2),
-                               phased = phased)
+        mother_gt = unparse_gt(
+            rng.choice(possible_alleles, size=2), phased = phased
+        )
         ## father genotype
-        father_gt = unparse_gt(np.random.choice(possible_alleles, size=2),
-                               phased = phased)
-        ## recombination
-        locus_dist = np.abs(pos - previous_pos)
-        allele_origin_proba = hap_model.haplotype_transition_probability(
-                                    previous_allele_origin,
-                                    mother_phasing_error_proba,
-                                    father_phasing_error_proba,
-                                    locus_dist, recombination_rate,
-                                    mother_phased = is_phased(mother_gt),
-                                    father_phased = is_phased(father_gt))
-
-        allele_origin = np.random.choice(possible_allele_origin,
-                                         p=allele_origin_proba)
-        # next locus
-        previous_allele_origin = allele_origin
-        previous_pos = pos
+        father_gt = unparse_gt(
+            rng.choice(possible_alleles, size=2), phased = phased
+        )
+        ## allele origin
+        allele_origin = f"{mat_ori}-{pat_ori}"
 
         ## simulation
-        fetal_gt, cfdna_gt, cfdna_ad = \
-                single_snp_data(mother_gt, father_gt, allele_origin, ff, cov,
-                                verbose)
-        ## phasing Value
-        mother_pq = 1e-12
-        mother_jq = 1e-12
-        father_pq = 1e-12
-        father_jq = 1e-12
+        fetal_gt, cfdna_gt, cfdna_ad = single_snp_data(
+            mother_gt, father_gt, allele_origin, ff, cov, verbose
+        )
+        
+        ## phasing Value (0 by default, no phasing error in simulation)
+        mother_pq = 0
+        father_pq = 0
+        mother_jq = 0
+        father_jq = 0
         ##
         out.append(['chr00', pos, mother_gt, father_gt, mother_pq, mother_jq,
                     father_pq, father_jq, ff, cov, fetal_gt, cfdna_gt,
@@ -301,6 +373,9 @@ def multi_snp_data(seq_length = 150, snp_dist=10e-3, phased = False,
 if __name__ == '__main__':
 
     from prediag.utils import float2string
+    
+    # RNG
+    rng = np.random.default_rng()
 
     # single SNP
     mother_gt = '0/1'
@@ -311,17 +386,26 @@ if __name__ == '__main__':
     add_noise = True
     verbose = True
 
-    fetal_gt, cfdna_gt, cfdna_ad = single_snp_data(mother_gt, father_gt,
-                                                   allele_origin, ff, coverage,
-                                                   add_noise, verbose)
+    fetal_gt, cfdna_gt, cfdna_ad = single_snp_data(
+        mother_gt, father_gt, allele_origin, ff, coverage,
+        add_noise, verbose
+    )
+    
+    # allele origin
+    seq_length = 150
+    recombination_rate = 1.2
+    snp_pos = np.sort(rng.uniform(0, seq_length, size = int(seq_length/2e-3)))
+    allele_origin = simulate_allele_origin(
+        seq_length, recombination_rate, snp_pos
+    )
 
     # multi SNP
-    seq_length = 0.1
-    snp_dist = 1e-3
+    seq_length = 100
+    snp_dist = 2e-3
     phased = True
     ff = 0.2
     ff_constant = False
-    recombination_rate = 1.2e-8
+    recombination_rate = 1.2
     coverage = 100
     coverage_constant = False
     add_noise = True
