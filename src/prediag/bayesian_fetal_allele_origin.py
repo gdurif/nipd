@@ -5,7 +5,7 @@
 
 # external
 import datetime
-from joblib import delayed, Parallel
+from multiprocessing.pool import Pool
 import psutil
 import numpy as np
 import pandas as pds
@@ -50,10 +50,13 @@ def init(seq_data_tab, init_allele_origin_tab, both_parent_phased = True):
     # drop useless columns
     out.drop(['fetal_gt_pred', 'fetal_gt_posterior'], inplace=True, axis=1)
     # add missing columns from input
-    out = pds.merge(out.dropna(),
-                    seq_data_tab[['chrom', 'pos', 'mother_pq', 'mother_jq',
-                                  'father_pq', 'father_jq']],
-                    how='left', on=['chrom', 'pos'])
+    out = pds.merge(
+        out.dropna(),
+        seq_data_tab[
+            ['chrom', 'pos', 'mother_pq', 'mother_jq','father_pq', 'father_jq']
+        ],
+        how='left', on=['chrom', 'pos']
+    )
     out['allele_origin_init'] = out['allele_origin']
     # output
     return out
@@ -149,9 +152,11 @@ def sampler(loci_tab, recombination_rate = 1.2e-8, verbose = False):
     return loci_tab
 
 
-def gibbs_sampling(init_tab, n_burn = 200, n_iter = 500, lag = 10,
-                   recombination_rate = 1.2e-8, verbose = False,
-                   position = 0, total = 1, **kwargs):
+def gibbs_sampling(
+    init_tab, n_burn = 200, n_iter = 500, lag = 10, 
+    recombination_rate = 1.2e-8, verbose = False,
+    sampler_id = 0, total = 1, **kwargs
+):
     """Gibbs sampler
 
     Input:
@@ -162,7 +167,7 @@ def gibbs_sampling(init_tab, n_burn = 200, n_iter = 500, lag = 10,
         recombination_rate (float): recombination rate per bp (between 0 and 1).
             Default value 1.2e-8.
         verbose (bool): verbosity. Default is False.
-        position (int): position for parallel Gibbs sampling.
+        sampler_id (int): id of the sampler (for parallel sampling).
         total (int): total number of samplers for parallel Gibbs sampling.
     """
     # initialization
@@ -170,44 +175,45 @@ def gibbs_sampling(init_tab, n_burn = 200, n_iter = 500, lag = 10,
     # burning iterations
     text = 'Gibbs burn'
     if total > 1:
-        text = 'Gibbs burn #{}'.format(position)
+        text = 'Gibbs burn #{}'.format(sampler_id)
     else:
         text = 'Gibbs burn'
-    for index in tqdm(range(int(n_burn)), position = int(position),
+    for index in tqdm(range(int(n_burn)), position = int(sampler_id),
                       desc = text, mininterval = 1, disable = not verbose):
         loci_tab = sampler(loci_tab, recombination_rate, verbose = False)
     # short break to avoid issue with progress bars
     time.sleep(2)
-    sys.stdout.flush()
-    sys.stderr.flush()
+    #sys.stdout.flush()
+    #sys.stderr.flush()
     # sampling iterations
     out = []
     text = 'Gibbs samp'
     if total > 1:
-        text = 'Gibbs samp #{}'.format(position)
+        text = 'Gibbs samp #{}'.format(sampler_id)
     else:
         text = 'Gibbs samp'
-    for index in tqdm(range(int(n_iter)), position = int(position + total),
+    for index in tqdm(range(int(n_iter)), position = int(sampler_id + total),
                       desc = text, mininterval = 1, disable = not verbose):
         loci_tab = sampler(loci_tab, recombination_rate, verbose = False)
         if index % lag == 0:
             out.append(loci_tab['allele_origin'].copy().to_numpy())
-    if verbose:
-        print("")
-    sys.stdout.flush()
-    sys.stderr.flush()
+    # short break to avoid issue with progress bars
+    time.sleep(2)
+    #sys.stdout.flush()
+    #sys.stderr.flush()
     # format output
-    sample_tab = pds.DataFrame(out,
-                               columns = loci_tab['chrom'] + '-'
-                                            + loci_tab['pos'].apply(str))
+    sample_tab = pds.DataFrame(
+        out,
+        columns = loci_tab['chrom'] + '-' + loci_tab['pos'].apply(str)
+    )
     # output
     return sample_tab
 
 
-def parallel_gibbs_sampling(init_tab, n_burn = 100, n_iter = 500,
-                            lag = 50, n_thread = 0, n_gibbs = 20,
-                            recombination_rate = 1.2e-8, verbose = False,
-                            **kwargs):
+def parallel_gibbs_sampling(
+    init_tab, n_burn = 100, n_iter = 500, lag = 50, n_thread = 0, n_gibbs = 20,
+    recombination_rate = 1.2e-8, verbose = False, **kwargs
+):
     """Parralel Gibbs sampler
 
     Input:
@@ -226,13 +232,13 @@ def parallel_gibbs_sampling(init_tab, n_burn = 100, n_iter = 500,
     # number of threads
     if n_thread == 0:
         n_thread = psutil.cpu_count(logical=False)
-    # parralel Gibbs sampler indexes
-    inputs = np.arange(n_gibbs)
     # run
-    processed_list = Parallel(n_jobs=n_thread)(
-                            delayed(gibbs_sampling)
-                            (init_tab, n_burn, n_iter, lag, recombination_rate,
-                             verbose, i, n_gibbs) for i in inputs)
+    with Pool(n_thread) as pool:
+        processed_list = pool.starmap(
+            gibbs_sampling, 
+            [(init_tab, n_burn, n_iter//n_gibbs, lag, recombination_rate, 
+              verbose, i, n_gibbs) for i in np.arange(n_gibbs)]
+        )
     # output
     return pds.concat(processed_list, ignore_index = True)
 
@@ -315,12 +321,10 @@ def infer_origin(loci_tab, post_tab, parent = "mother"):
     out = post_tab.copy()
     # compute marginal probabilities
     out[tag + '1_hap_post'] = out[out.columns[list(hap0_id)]].sum(axis=1)
-    out[tag + '2_hap_post'] = out[out.columns[list(hap1_id)]].sum(axis=1)
+    out[tag + '2_hap_post'] = out[out.columns[list(hap1_id)]].sum(axis=1)   
     # add loci location
-    out['chrom'] = list(map(lambda x: parse_region(x)[0],
-                            out.index))
-    out['pos'] = list(map(lambda x: parse_region(x)[1],
-                          out.index))
+    out['chrom'] = list(map(lambda x: parse_region(x)[0], out.index))
+    out['pos'] = list(map(lambda x: parse_region(x)[1], out.index))
     # discard useless columns
     out = out[['chrom', 'pos', tag + '1_hap_post', tag + '2_hap_post']]
     # output
@@ -406,7 +410,8 @@ def infer_parental_allele_origin(
             function.
         n_burn (int): number of burning iterations.
         n_iter (int): number of sampling iterations (after burning period).
-        lag (int): actually keep a sample every `lag` iterations.
+        lag (int): actually keep a sample every `lag` iterations to avoid 
+            auto-correlations.
         n_thread (int): number of threads for parallel computing, if 0 then
             all cpu cores are used.
         n_gibbs (int): number of parallel Gibbs samplers.
@@ -448,27 +453,30 @@ def infer_parental_allele_origin(
     sample_tab = None
     t0 = time.time()
     if n_thread == 1:
-        sample_tab = gibbs_sampling(loci_tab, n_burn, n_iter, lag,
-                                    recombination_rate, verbose)
+        sample_tab = gibbs_sampling(
+            loci_tab, n_burn, n_iter, lag, recombination_rate, verbose
+        )
     else:
-        sample_tab = parallel_gibbs_sampling(loci_tab, n_burn, n_iter, lag,
-                                             n_thread, n_gibbs,
-                                             recombination_rate, verbose)
+        sample_tab = parallel_gibbs_sampling(
+            loci_tab, n_burn, n_iter, lag, n_thread, n_gibbs,
+            recombination_rate, verbose
+        )
     t1 = time.time() - t0
     # posterior
     post_tab = extract_posterior(sample_tab)
     # infer origin
     out1 = infer_origin(seq_data_tab, post_tab, parent = "mother")
     out2 = infer_origin(seq_data_tab, post_tab, parent = "father")
-    # merge with input data and intermediate results
+    # merge with input data and intermediate results   
     out = pds.merge(
         init_allele_origin_tab[[
             'chrom', 'pos', 'mother_gt', 'father_gt', 'cfdna_gt', 'cfdna_ad',
             'cfdna_dp', 'fetal_fraction',
         ]], out1, how='right', on=['chrom', 'pos']
     )
-    out = pds.merge(out, out2,
-                    how='left', on=['chrom', 'pos'])
+    out = pds.merge(
+        out, out2, how='left', on=['chrom', 'pos']
+    )
     # flush progress bar
     if verbose:
         time.sleep(2)
@@ -504,20 +512,20 @@ if __name__ == '__main__':
 
     # multi SNP
     seq_length = 0.1
-    snp_dist = 1e-3
+    snp_dist = 2e-3
     phased = True
     ff = 0.2
-    ff_constant = False
+    ff_constant = True
     recombination_rate = 1.2e-8
     coverage = 200
-    coverage_constant = False
+    coverage_constant = True
     add_noise = True
     verbose = False
 
-    simu_data = simulation.multi_snp_data(seq_length, snp_dist, phased,
-                                          ff, ff_constant, recombination_rate,
-                                          coverage, coverage_constant,
-                                          add_noise, verbose)
+    simu_data = simulation.multi_snp_data(
+        seq_length, snp_dist, phased, ff, ff_constant, recombination_rate,
+        coverage, coverage_constant, add_noise, verbose
+    )
 
     print("fetal fraction estimation")
     fetal_fraction_tab = estimate_global_fetal_fraction(simu_data, tol = 0.05)
@@ -547,11 +555,12 @@ if __name__ == '__main__':
         both_parent_phased = True, verbose = True
     )
 
-    allele_origin_tab = pds.merge(allele_origin_tab,
-                    simu_data[['chrom', 'pos', 'true_allele_origin']],
-                    how='left', on=['chrom', 'pos'])
-    allele_origin_tab['true_allele_origin'] = \
-        allele_origin_tab['true_allele_origin'].apply(readable_allele_origin)
+    allele_origin_tab = pds.merge(
+        allele_origin_tab,
+        simu_data[['chrom', 'pos', 'true_allele_origin']],
+        how='left', on=['chrom', 'pos']
+    )
+    
     print(allele_origin_tab.to_string(
         float_format = float2string,
         formatters = {'allele_origin_conf': float2string,
