@@ -226,7 +226,7 @@ def readable_allele_origin(allele_origin):
     Index 0 = haplotype 1
     Index 1 = haplotype 2
 
-    If x or y is missing, it is replaced by None.
+    x or y could be missing, i.e. 'x-' or '-y'.
 
     >>> readable_allele_origin('0-1')
     'mat1-pat2'
@@ -255,7 +255,7 @@ def index_allele_origin(allele_origin):
     Index 0 = haplotype 1
     Index 1 = haplotype 2
 
-    If x or y is missing, it is replaced by None.
+    x or y could be missing, i.e. 'x-' or '-y'.
 
     >>> index_allele_origin('mat1-pat2')
     '0-1'
