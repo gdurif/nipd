@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 # internal
 import prediag.hap_model as hap_model
-from prediag.utils import is_het, is_phased, parse_allele_origin, parse_gt, unparse_allele_origin, unparse_gt
+from prediag.utils import is_het, is_phased, parse_allele_origin, parse_gt, unparse_allele_origin, unparse_gt, readable_allele_origin
 
 
 def ar_signal(n_samples, corr=0.9, mu=0, sigma=0.5):
@@ -160,10 +160,10 @@ def simulate_allele_origin(seq_length, recombination_rate, snp_pos):
     Convention: 0 = haplotype 1 and 1 = haplotype 2
 
     Input:
-        seq_length (float): length of simulated sequence (in Mbp).
-        recombination_rate (float): recombination rate in cM/Mbp 
-            Default value 1.2. If None, no recombination is simulated.
-        snp_pos (array of float): arrays of SNP positions (in Mbp).
+        seq_length (float): length of simulated sequence (in bp).
+        recombination_rate (float): recombination rate in cM/bp.  If None, 
+        no recombination is simulated.
+        snp_pos (array of float): arrays of SNP positions (in bp).
 
     Output: {0,1} valued vector of allele origin of length corresponging to
         `snp_pos` length.
@@ -178,20 +178,21 @@ def simulate_allele_origin(seq_length, recombination_rate, snp_pos):
     # vector of allele origin (without recombination)
     allele_origin = np.repeat(first_allele_origin, len(snp_pos))
     
-    ## generate recombination event if any
-    recomb_event = rng.binomial(
-        n = 1, p = min(seq_length * recombination_rate * 0.01, 1)
-    )
-    # in case of a recombination event ?
-    if recomb_event:
-        # recombination position
-        recomb_pos = rng.uniform(snp_pos.min(), snp_pos.max())
-        
-        # vector of allele origin (with recombination)
-        allele_origin = np.concatenate([
-            np.repeat(first_allele_origin, np.sum(snp_pos <= recomb_pos)),
-            np.repeat(1 - first_allele_origin, np.sum(snp_pos > recomb_pos))
-        ])
+    # any recombination ?
+    if recombination_rate is not None:
+        ## generate recombination event if any
+        recomb_event = rng.binomial(
+            n = 1, p = min(seq_length * recombination_rate * 0.01, 1)
+        )
+        # in case of a recombination event ?
+        if recomb_event:
+            # recombination position
+            recomb_pos = rng.uniform(snp_pos.min(), snp_pos.max())
+            # vector of allele origin (with recombination)
+            allele_origin = np.concatenate([
+                np.repeat(first_allele_origin, np.sum(snp_pos <= recomb_pos)),
+                np.repeat(1 - first_allele_origin, np.sum(snp_pos > recomb_pos))
+            ])
     
     # output
     return allele_origin
@@ -281,14 +282,14 @@ def multi_snp_data(seq_length = 150, snp_dist=2e-3, phased = False,
     # RNG
     rng = np.random.default_rng()
 
-    ## generate SNP position
+    ## generate SNP position (in bp)
     snp_dist_vec = rng.exponential(
         scale = snp_dist, 
         size = 5*int(seq_length / snp_dist)
     )
     
     snp_pos = np.cumsum(snp_dist_vec)
-    snp_pos = snp_pos[snp_pos <= seq_length]
+    snp_pos = (1E6*np.around(snp_pos[snp_pos <= seq_length], decimals=6)).astype(int)
     n_snp = len(snp_pos)
 
     ## fetal fraction
@@ -322,7 +323,7 @@ def multi_snp_data(seq_length = 150, snp_dist=2e-3, phased = False,
     ## simulate allele origins along the region for both parents
     # (with potential recombination event)
     mother_allele_origin = simulate_allele_origin(
-        seq_length, recombination_rate, snp_pos
+        int(seq_length*1E6), recombination_rate*1E-6, snp_pos
     )
     father_allele_origin = simulate_allele_origin(
         seq_length, recombination_rate, snp_pos
@@ -360,12 +361,15 @@ def multi_snp_data(seq_length = 150, snp_dist=2e-3, phased = False,
         out.append(['chr00', pos, mother_gt, father_gt, mother_pq, mother_jq,
                     father_pq, father_jq, ff, cov, fetal_gt, cfdna_gt,
                     cfdna_ad, np.sum(cfdna_ad), allele_origin])
-
+    # format data
     df = pd.DataFrame(out, columns=['chrom', 'pos', 'mother_gt',
                                     'father_gt', 'mother_pq', 'mother_jq',
                                     'father_pq', 'father_jq', 'true_ff',
                                     'coverage', 'true_fetal_gt', 'cfdna_gt',
                                     'cfdna_ad', 'cfdna_dp', 'true_allele_origin'])
+    # readable allele origin
+    df['true_allele_origin'] = df['true_allele_origin'].apply(readable_allele_origin)
+    # output
     return df
 
 
@@ -392,7 +396,7 @@ if __name__ == '__main__':
     )
     
     # allele origin
-    seq_length = 150
+    seq_length = 10
     recombination_rate = 1.2
     snp_pos = np.sort(rng.uniform(0, seq_length, size = int(seq_length/2e-3)))
     allele_origin = simulate_allele_origin(
@@ -400,8 +404,8 @@ if __name__ == '__main__':
     )
 
     # multi SNP
-    seq_length = 100
-    snp_dist = 2e-3
+    seq_length = 10
+    snp_dist = 1.8e-3
     phased = True
     ff = 0.2
     ff_constant = False
