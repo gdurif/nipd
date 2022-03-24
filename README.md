@@ -8,23 +8,25 @@ Bayesian approach introduced in [1] to infer the fetal fraction, the fetal genot
 
 ## Authors
 
-- Ghislain DURIF [2]
-- Cathy LIAUTARD HAAG [3]
-- Marie-Claire VINCENT [3,4]
+- Ghislain DURIF [a]
+- Cathy LIAUTARD HAAG [b]
+- Marie-Claire VINCENT [b,c]
 
-[2] IMAG, Université de Montpellier, CNRS, Montpellier, France;
+[a] IMAG, Université de Montpellier, CNRS, Montpellier, France;
 
-[3] Laboratoire de Génétique Moléculaire, Institut Universitaire de Recherche Clinique, Université de Montpellier, CHU Montpellier, Montpellier, France;
+[b] Laboratoire de Génétique Moléculaire, Institut Universitaire de Recherche Clinique, Université de Montpellier, CHU Montpellier, Montpellier, France;
 
-[4] PhyMedExp Univ. Montpellier, CNRS, INSERM, Montpellier, France;
+[c] PhyMedExp Univ. Montpellier, CNRS, INSERM, Montpellier, France;
 
 ## Availability
 
-The pipeline is available as a Python package called `prediag` (see the [`src`](./src) directory), which provides a command line interface (CLI) tools.
+The pipeline is available as a Python package called `prediag` (see the [`src`](./src) directory), which provides a command line interface (CLI) tools. See below for instructions about [installation](#installation) and [usage](#usage).
 
 ## Licensing
 
 The `prediag` package is released under the GPL-v3 license. See the attached files [`LICENSE.txt`](./LICENSE.txt) and [`COPYING.txt`](./COPYING.txt) for full license details.
+
+---
 
 ## Installation
 
@@ -34,44 +36,16 @@ External software:
 - Python 3+
 - git (optional)
 
-### Using a Python environment
+> **Note:** To avoid messing with your system, we recommend to install the `prediag` Python package inside a Python virtual environment or inside a Conda environment (c.f. [below](#using-a-python-environment) for more details).
 
-To avoid messing with your system, we recommend that you install the `prediag` Python package inside a Python virtual environment or inside a Conda environment.
+### Install from remote sources
 
-#### Python virtual environment
-
-* Create Python virtual environment
+You can install the `prediag` package from the remote repository using `pip` with:
 ```bash
-# edit the path
-python -m venv /path/to/.pyenv
+pip install git+https://github.com/gdurif/nipd.git#subdirectory=src
 ```
 
-* Activate the Python virtual environment (**should be done before every (re)installation/use of the package**):
-```bash
-# edit the path
-source /path/to/.pyenv/bin/activate
-```
-
-#### Conda environment
-
-* You should install Anaconda or Miniconda Python distribution. To check if it is available, run:
-```bash
-conda list
-```
-
-* Create a Conda environment:
-```bash
-# replace `<name_of_the_environment>` by a name of your choice
-conda create -n <name_of_the_environment>
-```
-
-* Activate the Conda environment (**should be done before every (re)installAtion/use of the package**):
-```bash
-# replace `<name_of_the_environment>` by the name you chose
-conda activate <name_of_the_environment>
-```
-
-### Install the `prediag` package
+### Install from local sources
 
 * Get the package sources
 ```bash
@@ -90,13 +64,15 @@ pip install -e .
 
 ## Usage
 
-> Before using the package (which provides command line tools), if relevant, you should **activate** your Python or Conda environment (depending on which you are using, c.f. above).
+> Before using the package (which provides command line tools), if relevant, you should **activate** your Python or Conda environment (depending on which you are using, c.f. [below](#using-a-python-environment)).
 
-You can find bash script examples to use the `prediag` command line interface in a dedicated [folder](./script/cli).
+### Command line interface (CLI)
+
+You can find bash script examples to use the `prediag` command line interface in ths dedicated [`script/cli`](./script/cli) folder.
 
 Some arguments/options are optional, c.f. help (available with the `-h` options).
 
-### Fetal fraction estimation
+#### Fetal fraction estimation
 
 * Command line tool help
 ```bash
@@ -116,14 +92,14 @@ prediag_fetal_fraction \
 -v
 ```
 
-### Fetal genotyping
+#### Fetal genotyping
 
 * Command line tool help
 ```bash
 prediag_genotyping -h
 ```
 
-* Using command line tool for fetal genotype inference on a given region
+* Using command line tool for fetal genotype inference on a given region (being `chr4:3000000:3200000`):
 ```bash
 prediag_fetal_genotyping \
 -cfdna_vcf cfnda_vcf_file \
@@ -139,17 +115,17 @@ prediag_fetal_genotyping \
 -v
 ```
 
-**Note**: you can provide the output of fetal fraction estimation on a wider set of loci with the option `--fetal_fraction_file`.
+> **Note**: you can provide the output of fetal fraction estimation (potentially on a wider set of loci) with the option `--fetal_fraction_file`.
 
 
-### Fetal allele origin inference
+#### Fetal allele origin inference
 
 * Command line tool help
 ```bash
 prediag_fetal_allele_origin_bayesian -h
 ```
 
-* Using command line tool for fetal allele origin inference on a given region
+* Using command line tool for fetal allele origin inference on a given region (being `chr4:3000000:3200000`):
 ```bash
 prediag_fetal_allele_origin_bayesian \
 -cfdna_vcf cfnda_vcf_file \
@@ -172,12 +148,12 @@ prediag_fetal_allele_origin_bayesian \
 -v
 ```
 
-**Note**: you can provide the output of fetal fraction estimation on a wider set of loci with the option `--fetal_fraction_file`.
+> **Note**: you can provide the output of fetal fraction estimation (potentially on a wider set of loci) with the option `--fetal_fraction_file`.
 
 
 ### Python package
 
-You can find Python script examples to use the `prediag` Python package in a dedicated [folder](./script/python).
+You can find Python script examples to use the `prediag` Python package in a dedicated [`script/python`](./script/python) folder.
 
 ---
 
@@ -190,3 +166,42 @@ You can find Python script examples to use the `prediag` Python package in a ded
 - correct cfDNA genotype by checking that allelic depth is higher than an absolute threshold, and higher than a percentage of the coverage
 - window-based estimation of fetal fraction with a weighted average of locus-based fetal fraction estimation with weights proportional to coverage
 - account for chromosome break in fetal allele origin inference
+
+---
+
+## Using a Python environment
+
+To avoid messing with your system, we recommend that you install the `prediag` Python package inside a Python virtual environment or inside a Conda environment.
+
+### Python virtual environment
+
+* Create Python virtual environment
+```bash
+# edit the path
+python -m venv /path/to/.pyenv
+```
+
+* Activate the Python virtual environment (**should be done before every (re)installation/use of the package**):
+```bash
+# edit the path
+source /path/to/.pyenv/bin/activate
+```
+
+### Conda environment
+
+* You should install Anaconda or Miniconda Python distribution. To check if it is available, run:
+```bash
+conda list
+```
+
+* Create a Conda environment:
+```bash
+# replace `<name_of_the_environment>` by a name of your choice
+conda create -n <name_of_the_environment>
+```
+
+* Activate the Conda environment (**should be done before every (re)installAtion/use of the package**):
+```bash
+# replace `<name_of_the_environment>` by the name you chose
+conda activate <name_of_the_environment>
+```
