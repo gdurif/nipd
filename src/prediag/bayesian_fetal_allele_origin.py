@@ -192,7 +192,7 @@ def gibbs_sampling(
         text = 'Gibbs samp #{}'.format(sampler_id)
     else:
         text = 'Gibbs samp'
-    for index in tqdm(range(int(n_iter)), position = int(sampler_id + total),
+    for index in tqdm(range(int(n_iter)), position = int(sampler_id + 1),
                       desc = text, mininterval = 1, disable = not verbose):
         loci_tab = sampler(loci_tab, recombination_rate, verbose = False)
         if index % lag == 0:
@@ -449,6 +449,7 @@ def infer_parental_allele_origin(
     if verbose:
         print("Dimension of the region (nb of SNPs) = {}"
               .format(len(loci_tab.index)))
+        print("\n")
     # run
     sample_tab = None
     t0 = time.time()
@@ -483,15 +484,15 @@ def infer_parental_allele_origin(
         print("\n" * n_gibbs, flush = True)
         sys.stdout.flush()
         sys.stderr.flush()
-        print("\n" * n_gibbs, flush = True)
-        sys.stdout.flush()
-        sys.stderr.flush()
+        #print("\n" * n_gibbs, flush = True)
+        #sys.stdout.flush()
+        #sys.stderr.flush()
     # short output
     print("Inference done in {} (h:m:s)"
           .format(str(datetime.timedelta(seconds=int(t1)))))
     print_region_origin(out, parent = "mother", threshold = 0.8)
     print_region_origin(out, parent = "father", threshold = 0.8)
-    print("")
+    print("\n")
     # save ?
     if filename is not None:
         try:
@@ -550,7 +551,7 @@ if __name__ == '__main__':
 
     print("fetal allele origin inference (bayesian)")
     allele_origin_tab = infer_parental_allele_origin(
-        simu_data, init_allele_origin_tab, n_burn = 100, n_iter = 400,
+        simu_data, init_allele_origin_tab, n_burn = 100, n_iter = 600,
         lag = 10, n_thread = 0, n_gibbs = 4, recombination_rate = 1.2e-8,
         both_parent_phased = True, verbose = True
     )
