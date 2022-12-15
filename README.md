@@ -1,10 +1,10 @@
 # Bayesian inference for non-invasive prenatal diagnostic of genetic diseases
 
-Bayesian approach introduced in [1] to infer the fetal fraction, the fetal genotype and the fetal allele origin using sequencing data from the mother, the father and cfDNA in the maternal plasma.
+Bayesian approach to infer the fetal fraction, the fetal genotype and the fetal allele origin using sequencing data from the mother, the father and cfDNA in the maternal plasma [1].
 
 ## Reference
 
-[1] C. Liautard-Haag, G. Durif, C. Van Goethem, D. Baux, A. Louis, L. Cayrefourcq, M Lamairia, M. Willems, C. Zordan, V. Dorian, C. Rooryck-Thambo, C. Goizet, A. Chaussenot, L Monteil, P. Calvas, C. Miry, R. Favre, E. Le Boette, M. Fradin, AF Roux, M. Cossee, M Koenig, C. Panabière, C. Guissart, M. C. Vincent. "Non-invasive prenatal diagnosis of triplet repeat expansion disorders by linked-read haplotyping and Bayesian modeling". 2021. Submitted to a peer-reviewed journal.
+[1] C. Liautard-Haag, G. Durif, C. Vangoethem, D. Baux, A. Louis, et al.. Noninvasive prenatal diagnosis of genetic diseases induced by triplet repeat expansion by linked read haplotyping and Bayesian approach. Scientific Reports, 2022, 12 (1), pp.11423. [⟨10.1038/s41598-022-15307-2⟩](https://dx.doi.org/10.1038/s41598-022-15307-2). [⟨hal-03716132⟩](https://hal.archives-ouvertes.fr/hal-03716132).
 
 ## Authors
 
